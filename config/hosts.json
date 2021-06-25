@@ -1,0 +1,9 @@
+[
+  {
+    "hostname": "telemetry",
+    "domain": "snapr.org",
+    "region": "eu-central-1",
+    "role": "telemetry",
+    "deployment": "snapr"
+  }
+]

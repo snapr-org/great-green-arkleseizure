@@ -1,0 +1,221 @@
+#cloud-config
+
+system_info:
+    default_user:
+        name: ${username}
+        gecos: ${username}
+        primary_group: ${username}
+        ssh_import_id: None
+        lock_passwd: true
+        ssh_authorized_keys:
+            - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPb24HEQ++aNFWaqVyMtIs6GotUB8R+q61XOoI2z6uMj github.com/grenade
+
+users:
+    - default
+
+ssh_deletekeys: true
+ssh_keys:
+    ed25519_private: |
+        ${host_key_private}
+    ed25519_public: |
+        ${host_key_public}
+    ed25519_certificate: |
+        ${host_key_certificate}
+
+packages:
+    - awscli
+    - certbot
+    - curl
+    - jq
+    - python-is-python3
+    - python3
+    - python3-certbot-nginx
+    - software-properties-common
+    - wget
+
+write_files:
+    -
+        owner: root:root
+        path: /etc/letsencrypt/options-ssl-nginx.conf
+        permissions: '0644'
+        content: |
+            ssl_session_cache shared:le_nginx_SSL:10m;
+            ssl_session_timeout 1440m;
+            ssl_session_tickets off;
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_prefer_server_ciphers off;
+            ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384";
+    -
+        owner: root:root
+        path: /etc/letsencrypt/ssl-dhparams.pem
+        permissions: '0644'
+        content: |
+            -----BEGIN DH PARAMETERS-----
+            MIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
+            +8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a
+            87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7
+            YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
+            7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD
+            ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
+            -----END DH PARAMETERS-----
+    -
+        owner: root:root
+        path: /etc/nginx/sites-available/default-ssl
+        permissions: '0644'
+        content: |
+            server {
+                server_name ${cname};
+                listen [::]:443 ssl ipv6only=on;
+                listen 443 ssl;
+                location / {
+                    proxy_pass http://localhost:8000/;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection "upgrade";
+                }
+                ssl_certificate /etc/letsencrypt/live/${cname}/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/${cname}/privkey.pem;
+                include /etc/letsencrypt/options-ssl-nginx.conf;
+                ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+            }
+    -
+        owner: root:root
+        path: /etc/cloudwatch.json
+        permissions: '0644'
+        content: |
+            {
+                "agent": {
+                    "metrics_collection_interval": 60,
+                    "run_as_user": "root"
+                },
+                "logs": {
+                  "logs_collected": {
+                    "files": {
+                      "collect_list": [
+                        {
+                            "file_path": "/var/log/auth.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "auth"
+                        },
+                        {
+                            "file_path": "/var/log/syslog",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "sys"
+                        },
+                        {
+                            "file_path": "/var/log/cloud-init-output.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "cloud-init"
+                        },
+                        {
+                            "file_path": "/var/log/letsencrypt/letsencrypt.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "letsencrypt"
+                        },
+                        {
+                            "file_path": "/var/log/nginx/access.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "nginx"
+                        },
+                        {
+                            "file_path": "/var/log/nginx/error.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "nginx"
+                        },
+                        {
+                            "file_path": "/var/log/telemetry/telemetry-stdout.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "telemetry"
+                        },
+                        {
+                            "file_path": "/var/log/faucet-bot/telemetry-stderr.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "telemetry"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "metrics": {
+                    "append_dimensions": {
+                        "AutoScalingGroupName": "$${aws:AutoScalingGroupName}",
+                        "ImageId": "$${aws:ImageId}",
+                        "InstanceId": "$${aws:InstanceId}",
+                        "InstanceType": "$${aws:InstanceType}"
+                    },
+                    "metrics_collected": {
+                        "disk": {
+                            "measurement": [ "used_percent" ],
+                            "metrics_collection_interval": 60,
+                            "resources": [ "*" ]
+                        },
+                        "mem": {
+                            "measurement": [ "mem_used_percent" ],
+                            "metrics_collection_interval": 60
+                        },
+                        "statsd": {
+                            "metrics_aggregation_interval": 60,
+                            "metrics_collection_interval": 10,
+                            "service_address": ":8125"
+                        }
+                    }
+                }
+            }
+
+hostname: ${hostname}
+fqdn: ${cname}
+
+runcmd:
+
+    # install and configure cloudwatch
+    - wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+    - dpkg -i -E ./amazon-cloudwatch-agent.deb
+    - /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/etc/cloudwatch.json
+    - systemctl enable amazon-cloudwatch-agent.service
+    - service amazon-cloudwatch-agent start
+
+    # create user gpg key
+    - sudo -H -u ${username} bash -c 'gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase "" --quick-generate-key "${username} ${hostname} <${username}@${cname}>" ed25519 sign 0'
+    - sudo -H -u ${username} bash -c 'gpg --list-options show-only-fpr-mbox --list-keys | cut -f 1 -d " " > /home/${username}/.gnupg/fingerprint'
+    - sudo -H -u ${username} bash -c 'gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase "" --quick-add-key `cat /home/${username}/.gnupg/fingerprint` cv25519 encr 0'
+    - sudo -H -u ${username} bash -c 'gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase "" --quick-add-key `cat /home/${username}/.gnupg/fingerprint` ed25519 auth 0'
+    - sudo -H -u ${username} bash -c 'gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase "" --quick-add-key `cat /home/${username}/.gnupg/fingerprint` ed25519 sign 0'
+    - sudo -H -u ${username} bash -c 'gpg --armor --export "${username} ${hostname} <${username}@${cname}>" > /home/${username}/.gnupg/${username}-${hostname}-ed25519.pub'
+
+    # publish user and host public keys to region bucket and local www folder
+    - aws s3 cp /home/${username}/.gnupg/${username}-${hostname}-ed25519.pub s3://manta-network-artifact-${region}/keys/${hostname}/
+    - ln -s /home/${username}/.gnupg/${username}-${hostname}-ed25519.pub /var/www/html/${username}-${hostname}-ed25519.pub
+
+    - aws s3 cp /etc/ssh/ssh_host_ed25519_key.pub s3://manta-network-artifact-${region}/keys/${hostname}/
+    - ln -s /etc/ssh/ssh_host_ed25519_key.pub /var/www/html/ssh_host_ed25519_key.pub
+
+    - aws s3 cp /etc/ssh/ssh_host_rsa_key.pub s3://manta-network-artifact-${region}/keys/${hostname}/
+    - ln -s /etc/ssh/ssh_host_rsa_key.pub /var/www/html/ssh_host_rsa_key.pub
+
+    # fetch or generate let's encrypt cert and configure nginx
+    - curl -sL https://raw.githubusercontent.com/snapr-org/great-green-arkleseizure/main/script/certify.sh | bash -s ${admin_email} ${hostname} ${domain} ${cname}
+    - rm /etc/nginx/sites-enabled/default
+    - ln -s /etc/nginx/sites-available/default-ssl /etc/nginx/sites-enabled/default
+    - systemctl restart nginx
+
+    # install nodejs, yarn and pm2
+    #- sudo -H -u ${username} bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash'
+    #- sudo -H -u ${username} bash -c 'export NVM_DIR="/home/${username}/.nvm"'
+    #- sudo -H -u ${username} bash -c 'source /home/${username}/.nvm/nvm.sh'
+    #- sudo -H -u ${username} bash -c 'source /home/${username}/.nvm/bash_completion'
+    #- sudo -H -u ${username} bash -c 'source /home/${username}/.nvm/nvm.sh && nvm install v16.3.0'
+    #- sudo -H -u ${username} bash -c 'source /home/${username}/.nvm/nvm.sh && npm install --global npm@7.17.0'
+    #- sudo -H -u ${username} bash -c 'source /home/${username}/.nvm/nvm.sh && npm install --global yarn'
+    #- sudo -H -u ${username} bash -c 'source /home/${username}/.nvm/nvm.sh && npm install --global pm2'
+
+    # install telemetry api
+    - sudo -H -u ${username} bash -c 'curl -o /home/${username}/telemetry -sL ${telemetry_release_url}'
+    - sudo -H -u ${username} bash -c 'chmod +x /home/${username}/telemetry'
+    - sudo -H -u ${username} bash -c 'mkdir -p /home/${username}/log'
+    - ln -s /home/${username}/log /var/log/telemetry
+
+    # run telemetry api
+    - sudo -H -u ${username} bash -c '/home/${username}/telemetry > /home/${username}/log/telemetry-stdout.log 2> /home/${username}/log/telemetry-stderr.log &'
