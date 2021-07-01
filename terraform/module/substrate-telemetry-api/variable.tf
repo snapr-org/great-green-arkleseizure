@@ -40,5 +40,5 @@ variable "telemetry_release_url" {
   type = string
 }
 variable "trusted_cidr_blocks" {
-  type    = list(string)
+  type = list(string)
 }
