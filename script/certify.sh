@@ -18,8 +18,8 @@ if [ ! -f /etc/letsencrypt/live/${server_cname}/cert.pem ] || \
   echo "detected missing or incomplete letsencrypt ssl cert"
 
   # check if cert, chain and private key exist in aws cert and secret stores
-  if aws iam get-server-certificate --server-certificate-name ${server_hostname}.${server_domain} > ./server-certificate.json; then
-    echo "fetched ${server_hostname}.${server_domain} aws server-certificate"
+  if aws iam get-server-certificate --server-certificate-name ${server_hostname}.${server_domain} > ./server-certificate.json && aws secretsmanager get-secret-value --region us-west-2 --secret-id ssl-${server_hostname}.${server_domain} | jq -r '.SecretString' > /etc/letsencrypt/live/${server_cname}/privkey.pem; then
+    echo "fetched ${server_hostname}.${server_domain} aws server-certificate and secret"
 
     # copy cert, chain and private key from aws cert and secret stores to local filesystem
     mkdir -p /etc/letsencrypt/live/${server_cname}
@@ -29,8 +29,9 @@ if [ ! -f /etc/letsencrypt/live/${server_cname}/cert.pem ] || \
     jq -r '.ServerCertificate.CertificateBody' ./server-certificate.json > /etc/letsencrypt/live/${server_cname}/cert.pem
     jq -r '.ServerCertificate.CertificateChain' ./server-certificate.json > /etc/letsencrypt/live/${server_cname}/chain.pem
     cat /etc/letsencrypt/live/${server_cname}/{cert,chain}.pem > /etc/letsencrypt/live/${server_cname}/fullchain.pem
-    aws secretsmanager get-secret-value --region us-west-2 --secret-id ssl-${server_hostname}.${server_domain} | jq -r '.SecretString' > /etc/letsencrypt/live/${server_cname}/privkey.pem
   else
+    rm -f ./server-certificate.json
+    rm -rf /etc/letsencrypt/live/${server_cname} /etc/letsencrypt/live/${server_hostname}.${server_domain}
     echo "missing ${server_hostname}.${server_domain} aws server-certificate"
 
     # append any specified alternative hostnames
