@@ -23,6 +23,9 @@ if [ ! -f /etc/letsencrypt/live/${server_cname}/cert.pem ] || \
 
     # copy cert, chain and private key from aws cert and secret stores to local filesystem
     mkdir -p /etc/letsencrypt/live/${server_cname}
+    if [ "${server_hostname}.${server_domain}" != "${server_cname}" ]; then
+      ln -s /etc/letsencrypt/live/${server_cname} /etc/letsencrypt/live/${server_hostname}.${server_domain}
+    fi
     jq -r '.ServerCertificate.CertificateBody' ./server-certificate.json > /etc/letsencrypt/live/${server_cname}/cert.pem
     jq -r '.ServerCertificate.CertificateChain' ./server-certificate.json > /etc/letsencrypt/live/${server_cname}/chain.pem
     cat /etc/letsencrypt/live/${server_cname}/{cert,chain}.pem > /etc/letsencrypt/live/${server_cname}/fullchain.pem
