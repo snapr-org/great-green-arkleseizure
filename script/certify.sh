@@ -34,6 +34,7 @@ if [ ! -f /etc/letsencrypt/live/${server_cname}/cert.pem ] || \
     rm -rf /etc/letsencrypt/live/${server_cname} /etc/letsencrypt/live/${server_hostname}.${server_domain}
     curl -sL https://raw.githubusercontent.com/snapr-org/great-green-arkleseizure/main/config/default.nginx > /etc/nginx/sites-available/default
     ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+    systemctl restart nginx
     echo "missing ${server_hostname}.${server_domain} aws server-certificate"
 
     # append any specified alternative hostnames
