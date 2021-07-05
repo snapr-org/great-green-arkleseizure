@@ -30,8 +30,10 @@ if [ ! -f /etc/letsencrypt/live/${server_cname}/cert.pem ] || \
     jq -r '.ServerCertificate.CertificateChain' ./server-certificate.json > /etc/letsencrypt/live/${server_cname}/chain.pem
     cat /etc/letsencrypt/live/${server_cname}/{cert,chain}.pem > /etc/letsencrypt/live/${server_cname}/fullchain.pem
   else
-    rm -f ./server-certificate.json
+    rm -f ./server-certificate.json /etc/nginx/sites-enabled/default
     rm -rf /etc/letsencrypt/live/${server_cname} /etc/letsencrypt/live/${server_hostname}.${server_domain}
+    curl -sL https://raw.githubusercontent.com/snapr-org/great-green-arkleseizure/main/config/default.nginx > /etc/nginx/sites-available/default
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
     echo "missing ${server_hostname}.${server_domain} aws server-certificate"
 
     # append any specified alternative hostnames
