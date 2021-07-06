@@ -5,8 +5,8 @@
 
 temp_dir=$(mktemp -d)
 
-instance_region=$(curl --sL http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
-instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+instance_region=$(curl -sL http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
+instance_id=$(curl -sL http://169.254.169.254/latest/meta-data/instance-id)
 instance_name=$(aws ec2 describe-instances --region ${instance_region} --instance-id ${instance_id} --query "Reservations[*].Instances[*].Tags[?Key=='Name'].Value" --output text)
 instance_domain=$(aws ec2 describe-instances --region ${instance_region} --instance-id ${instance_id} --query "Reservations[*].Instances[*].Tags[?Key=='Domain'].Value" --output text)
 instance_cname=$(aws ec2 describe-instances --region ${instance_region} --instance-id ${instance_id} --query "Reservations[*].Instances[*].Tags[?Key=='cname'].Value" --output text)
