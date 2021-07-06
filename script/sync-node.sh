@@ -25,8 +25,35 @@ else
   expected_snapr_tag=v${expected_snapr_version/-x86_64-linux-gnu/}
   expected_snapr_url=https://github.com/snapr-org/snapr/releases/download/${expected_snapr_tag}/snapr_v${expected_snapr_version}
   expected_snapr_path=/usr/local/bin/snapr_v${expected_snapr_version}
-  if curl -sL ${expected_snapr_url} -o ${expected_snapr_path} && find ${expected_snapr_path} -size -10M -delete && [ -s ${expected_snapr_path} ]; then
+  if curl -sL ${expected_snapr_url} -o ${expected_snapr_path} && find ${expected_snapr_path} -size -10M -delete && [ -s ${expected_snapr_path} ] && chmod +x ${expected_snapr_path}; then
     echo "snapr: ${expected_snapr_path} downloaded from ${expected_snapr_url}"
+    if rm /usr/local/bin/snapr; then
+      echo "snapr: symlink to version ${detected_snapr_version}, removed"
+      if ln -s ${expected_snapr_path} /usr/local/bin/snapr; then
+        echo "snapr: symlink to version ${expected_snapr_version}, created"
+        if systemctl stop snapr; then
+          echo "snapr: service stop requested"
+          while systemctl is-active --quiet snapr; do
+            echo "snapr: awaiting service stop"
+          done
+          echo "snapr: service stop detected, pausing for 2 minutes..."
+          sleep 120
+          if systemctl start snapr; then
+            echo "snapr: service start requested"
+            while ! systemctl is-active --quiet snapr; do
+              echo "snapr: awaiting service start"
+            done
+            echo "snapr: service start detected"
+          fi
+        else
+          echo "snapr: service stop request failed"
+        fi
+      else
+        echo "snapr: symlink to version ${expected_snapr_version}, creation failed"
+      fi
+    else
+      echo "snapr: symlink to version ${detected_snapr_version}, remove failed"
+    fi
   else
     echo "snapr: ${expected_snapr_path} download failed from ${expected_snapr_url}"
   fi
