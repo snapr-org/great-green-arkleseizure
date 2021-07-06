@@ -2,8 +2,49 @@
   {
     "hostname": "telemetry",
     "domain": "snapr.org",
+    "cname": "telemetry.snapr.systems",
     "region": "eu-central-1",
     "role": "telemetry",
+    "username": "arkleseizure",
     "deployment": "snapr"
+  },
+  {
+    "hostname": "trillian",
+    "domain": "snapr.com",
+    "cname": "trillian.snapr.systems",
+    "region": "ap-southeast-1",
+    "role": "validator",
+    "username": "arkleseizure",
+    "deployment": "snapr-mainnet",
+    "snapr": {
+      "version": "3.0.0-9287555-x86_64-linux-gnu",
+      "genesis": true
+    }
+  },
+  {
+    "hostname": "ford",
+    "domain": "snapr.net",
+    "cname": "ford.snapr.systems",
+    "region": "eu-north-1",
+    "role": "validator",
+    "username": "arkleseizure",
+    "deployment": "snapr-mainnet",
+    "snapr": {
+      "version": "3.0.0-9287555-x86_64-linux-gnu",
+      "genesis": true
+    }
+  },
+  {
+    "hostname": "arthur",
+    "domain": "snapr.org",
+    "cname": "arthur.snapr.systems",
+    "region": "us-east-1",
+    "role": "validator",
+    "username": "arkleseizure",
+    "deployment": "snapr-mainnet",
+    "snapr": {
+      "version": "3.0.0-9287555-x86_64-linux-gnu",
+      "genesis": true
+    }
   }
 ]
