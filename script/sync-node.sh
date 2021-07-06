@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# usage:
+# curl -sL https://raw.githubusercontent.com/snapr-org/great-green-arkleseizure/main/script/sync-node.sh | sudo bash -s ${args}
+
 temp_dir=$(mktemp -d)
 
 instance_region=$(curl --sL http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
