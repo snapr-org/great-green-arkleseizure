@@ -23,9 +23,10 @@ locals {
   cname = "telemetry.snapr.systems"
   admin_email = "ops@snapr.org"
   zone_id = "Z07796421GG5I8U5O58SQ" # snapr.systems
-  telemetry_release_url = "https://github.com/snapr-org/snapr-telemetry/releases/download/v0.3.0-f3cca13/telemetry"
+  telemetry_release_url = "https://github.com/snapr-org/snapr-telemetry/releases/download/v0.3.0-dcdf038/telemetry"
   trusted_cidr_blocks = [
-    "185.236.154.48/32", # mp 4404
+    "185.236.152.0/22", # mp 4404
+    "185.189.196.0/22", # mp 4404
   ]
 }
 

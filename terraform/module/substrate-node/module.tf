@@ -5,25 +5,18 @@ provider "aws" {
 
 locals {
   host_keys = yamldecode(data.aws_secretsmanager_secret_version.host_keys.secret_string)
-  node_keys = yamldecode(data.aws_secretsmanager_secret_version.node_keys.secret_string)
   shared = yamldecode(data.aws_secretsmanager_secret_version.shared.secret_string)
 }
 
 data "aws_caller_identity" "current" {}
 resource "aws_secretsmanager_secret" "host_keys" {
-  name = "ssh-host-${var.hostname}.${var.domain}"
+  name = "ssh-host-${var.cname}"
 }
 data "aws_secretsmanager_secret_version" "host_keys" {
   secret_id = aws_secretsmanager_secret.host_keys.id
 }
-resource "aws_secretsmanager_secret" "node_keys" {
-  name = "node-${var.hostname}.${var.domain}"
-}
-data "aws_secretsmanager_secret_version" "node_keys" {
-  secret_id = aws_secretsmanager_secret.node_keys.id
-}
 resource "aws_secretsmanager_secret" "shared" {
-  name = "shared-${var.hostname}.${var.domain}"
+  name = "shared-${var.cname}"
 }
 data "aws_secretsmanager_secret_version" "shared" {
   secret_id = aws_secretsmanager_secret.shared.id
@@ -31,6 +24,7 @@ data "aws_secretsmanager_secret_version" "shared" {
 data "template_file" "cloud_config" {
   template = file(var.cloud_config_path)
   vars = {
+    deployment = var.deployment
     hostname = var.hostname
     domain = var.domain
     username = var.username
@@ -107,13 +101,6 @@ resource "aws_route53_record" "node" {
   ttl = var.ttl
   records = [aws_instance.node.public_ip]
 }
-resource "aws_route53_record" "node_ws" {
-  zone_id = var.zone_id
-  name = "ws.${var.cname}"
-  type = "CNAME"
-  ttl = var.ttl
-  records = [var.cname]
-}
 
 resource "aws_iam_role" "node" {
   name = "${var.deployment}-${var.hostname}"
@@ -165,15 +152,26 @@ resource "aws_iam_role_policy" "node" {
       },
       {
         Action = [
-          "s3:GetObject",
-          "s3:GetObjectVersion",
           "s3:ListBucket",
-          "s3:PutObject",
+          "s3:GetBucketLocation"
         ]
         Effect = "Allow"
         Resource = [
-          "arn:aws:s3:::manta-network-artifact-${var.region}",
-          "arn:aws:s3:::manta-network-artifact-${var.region}/*",
+          aws_s3_bucket.node.arn,
+        ]
+      },
+      {
+        Action = [
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:GetObject",
+          "s3:GetObjectAcl",
+          "s3:DeleteObject"
+        ]
+        Effect = "Allow"
+        Resource = [
+          aws_s3_bucket.node.arn,
+          "${aws_s3_bucket.node.arn}/*",
         ]
       },
       {
@@ -183,7 +181,10 @@ resource "aws_iam_role_policy" "node" {
           "iam:UploadServerCertificate",
         ]
         Effect = "Allow"
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:server-certificate/${var.hostname}.${var.domain}"
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:server-certificate/${var.cname}",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:server-certificate/${var.hostname}.${var.domain}",
+        ]
       },
       {
         Action = [
@@ -195,7 +196,7 @@ resource "aws_iam_role_policy" "node" {
         Effect = "Allow"
         Resource = [
           "arn:aws:secretsmanager:us-west-2:${data.aws_caller_identity.current.account_id}:secret:ssl-${var.hostname}.${var.domain}*",
-          "arn:aws:secretsmanager:us-west-2:${data.aws_caller_identity.current.account_id}:secret:ssh-host-${var.hostname}.${var.domain}*",
+          "arn:aws:secretsmanager:us-west-2:${data.aws_caller_identity.current.account_id}:secret:ssh-host-${var.cname}*",
         ]
       },
     ]
@@ -227,6 +228,15 @@ resource "aws_security_group_rule" "https" {
   type = "ingress"
   from_port = 443
   to_port = 443
+  protocol = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  ipv6_cidr_blocks = ["::/0"]
+}
+resource "aws_security_group_rule" "p2p" {
+  security_group_id = aws_security_group.node.id
+  type = "ingress"
+  from_port = var.substrate_port
+  to_port = var.substrate_port
   protocol = "tcp"
   cidr_blocks = ["0.0.0.0/0"]
   ipv6_cidr_blocks = ["::/0"]
@@ -305,4 +315,22 @@ resource "aws_ses_domain_identity_verification" "node" {
   depends_on = [
     aws_route53_record.node_txt_ses
   ]
+}
+resource "aws_s3_bucket" "node" {
+  bucket = "${var.deployment}-${var.region}-${var.hostname}"
+  acl = "private"
+  versioning {
+    enabled = false
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+  tags = {
+    Source = "https://github.com/snapr-org/great-green-arkleseizure"
+    Owner = "ops@snapr.org"
+  }
 }

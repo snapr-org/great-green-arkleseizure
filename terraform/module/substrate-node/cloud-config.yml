@@ -18,7 +18,6 @@ users:
         system: true
         sudo: false
         shell: /usr/sbin/nologin
-        ssh_redirect_user: true
 
 ssh_deletekeys: true
 ssh_keys:
@@ -134,9 +133,14 @@ write_files:
                             "log_stream_name": "sys"
                         },
                         {
-                            "file_path": "/var/log/cloud-init-output.log",
+                            "file_path": "/var/log/cloud-init.log",
                             "log_group_name": "${cname}",
                             "log_stream_name": "cloud-init"
+                        },
+                        {
+                            "file_path": "/var/log/cloud-init-output.log",
+                            "log_group_name": "${cname}",
+                            "log_stream_name": "cloud-init-output"
                         },
                         {
                             "file_path": "/var/log/letsencrypt/letsencrypt.log",
@@ -193,7 +197,7 @@ write_files:
                 }
             }
     -
-        owner: prometheus:prometheus
+        owner: root:root
         path: /etc/prometheus/prometheus.yml
         permissions: '0644'
         content: |
@@ -287,7 +291,7 @@ write_files:
             User=root
             Group=root
             Type=simple
-            ExecStart=/usr/local/bin/${substrate_executable} --chain ${substrate_chain} --name ${substrate_name} --port ${substrate_port} --ws-port ${substrate_ws_port} --rpc-cors ${substrate_rpc_cors} ${substrate_args}
+            ExecStart=/usr/local/bin/${substrate_executable} --base-path /var/lib/${substrate_executable} --chain ${substrate_chain} --name ${substrate_name} --port ${substrate_port} --ws-port ${substrate_ws_port} --rpc-cors ${substrate_rpc_cors} ${substrate_args}
             Restart=always
             RestartSec=120
             StandardOutput=file:/var/log/${substrate_executable}/stdout.log
@@ -302,7 +306,7 @@ fqdn: ${cname}
 runcmd:
 
     # install and configure cloudwatch
-    - wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+    - wget --quiet https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
     - dpkg -i -E ./amazon-cloudwatch-agent.deb
     - /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/etc/cloudwatch.json
     - systemctl enable amazon-cloudwatch-agent.service
@@ -320,7 +324,7 @@ runcmd:
     - systemctl status nginx
 
     # install and run prometheus
-    - wget https://github.com/prometheus/prometheus/releases/download/v2.26.0/prometheus-2.26.0.linux-amd64.tar.gz
+    - wget --quiet https://github.com/prometheus/prometheus/releases/download/v2.26.0/prometheus-2.26.0.linux-amd64.tar.gz
     - tar xvfz prometheus-2.26.0.linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 prometheus-2.26.0.linux-amd64/{prometheus,promtool}
     - chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}
     - mkdir -p /{etc,var/lib}/prometheus
@@ -332,13 +336,16 @@ runcmd:
     - systemctl status prometheus.service
 
     # install and run alertmanager
-    - wget https://github.com/prometheus/alertmanager/releases/download/v0.21.0/alertmanager-0.21.0.linux-amd64.tar.gz
+    - wget --quiet https://github.com/prometheus/alertmanager/releases/download/v0.21.0/alertmanager-0.21.0.linux-amd64.tar.gz
     - tar xvfz alertmanager-0.21.0.linux-amd64.tar.gz -C /usr/local/bin --strip-components=1 alertmanager-0.21.0.linux-amd64/alertmanager
     - systemctl enable --now alertmanager.service
     - systemctl status alertmanager.service
 
     # download and run substrate
-    - wget ${substrate_release_url} -O /usr/local/bin/${substrate_executable}
+    - wget --quiet ${substrate_release_url} -O /usr/local/bin/${substrate_executable}
     - chmod +x /usr/local/bin/${substrate_executable}
+    - mkdir -p /var/lib/${substrate_executable}
+    - aws s3 sync s3://${deployment}-${region}-${hostname}/var/lib/${substrate_executable} /var/lib/${substrate_executable} || true
+    - mkdir -p /var/log/${substrate_executable}
     - systemctl enable --now ${substrate_executable}.service
     - systemctl status ${substrate_executable}.service
