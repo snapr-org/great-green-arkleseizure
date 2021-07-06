@@ -17,7 +17,7 @@
     "username": "arkleseizure",
     "deployment": "snapr-mainnet",
     "snapr": {
-      "version": "3.0.0-9287555-x86_64-linux-gnu",
+      "version": "3.0.0-9b21baf-x86_64-linux-gnu",
       "genesis": true
     }
   },
@@ -30,7 +30,7 @@
     "username": "arkleseizure",
     "deployment": "snapr-mainnet",
     "snapr": {
-      "version": "3.0.0-9287555-x86_64-linux-gnu",
+      "version": "3.0.0-9b21baf-x86_64-linux-gnu",
       "genesis": true
     }
   },
@@ -43,7 +43,7 @@
     "username": "arkleseizure",
     "deployment": "snapr-mainnet",
     "snapr": {
-      "version": "3.0.0-9287555-x86_64-linux-gnu",
+      "version": "3.0.0-9b21baf-x86_64-linux-gnu",
       "genesis": true
     }
   }

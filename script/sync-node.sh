@@ -22,4 +22,15 @@ if [ "${detected_snapr_version}" = "${expected_snapr_version}" ]; then
   echo "snapr: detected version (${detected_snapr_version}) matches expected version (${expected_snapr_version})"
 else
   echo "snapr: detected version (${detected_snapr_version}) does not match expected version (${expected_snapr_version})"
+  expected_snapr_tag=v${expected_snapr_version/-x86_64-linux-gnu/}
+  expected_snapr_url=https://github.com/snapr-org/snapr/releases/download/${expected_snapr_tag}/snapr_v${expected_snapr_version}
+  expected_snapr_path=/usr/local/bin/snapr_v${expected_snapr_version}
+  if curl -sL ${expected_snapr_url} -o ${expected_snapr_path}  && [ -s ${expected_snapr_path} ]; then
+    echo "snapr: ${expected_snapr_path} downloaded from ${expected_snapr_url}"
+  else
+    echo "snapr: ${expected_snapr_path} download failed from ${expected_snapr_url}"
+    if [ -f /usr/local/bin/snapr_v${expected_snapr_version} ]; then
+      rm -f /usr/local/bin/snapr_v${expected_snapr_version}
+    fi
+  fi
 fi
