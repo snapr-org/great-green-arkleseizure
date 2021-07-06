@@ -15,4 +15,11 @@ config_url=${instance_source/github.com/raw.githubusercontent.com}/main/config/h
 
 curl -sL ${config_url} | jq --arg hostname ${instance_name} --arg domain ${instance_domain} --arg cname ${instance_cname} --arg region ${instance_region} '.[] | select( .hostname == $hostname and .domain == $domain and .cname == $cname and .region == $region )' > ${temp_dir}/host-config.json
 
-jq '.' ${temp_dir}/host-config.json
+detected_snapr_version=$(snapr --version | head -n 1 | cut -d' ' -f2)
+expected_snapr_version=$(jq -r '.snapr.version' ${temp_dir}/host-config.json)
+
+if [ "${detected_snapr_version}" = "${expected_snapr_version}" ]; then
+  echo "snapr: detected version (${detected_snapr_version}) matches expected version (${expected_snapr_version})"
+else
+  echo "snapr: detected version (${detected_snapr_version}) does not match expected version (${expected_snapr_version})"
+fi
