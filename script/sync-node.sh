@@ -36,7 +36,15 @@ else
           while systemctl is-active --quiet snapr; do
             echo "snapr: awaiting service stop"
           done
-          echo "snapr: service stop detected, pausing for 2 minutes..."
+          echo "snapr: service stop detected"
+          #expected_snapr_genesis=$(jq -r '.snapr.genesis' ${temp_dir}/host-config.json)
+          #if [ "${expected_snapr_genesis}" = "true" ] && /usr/local/bin/snapr purge-chain --base-path /var/lib/snapr --chain mainnet -y; then
+          #  echo "snapr: ${expected_snapr_version} genesis chain purged"
+          #else
+          #  echo "snapr: pausing for 2 minutes..."
+          #  sleep 120
+          #fi
+          echo "snapr: pausing for 2 minutes..."
           sleep 120
           if systemctl start snapr; then
             echo "snapr: service start requested"
